@@ -1,0 +1,16 @@
+{
+  "name": "backend-mcp-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["mcp", "server", "curl", "backend"],
+  "author": "",
+  "license": "ISC",
+  "description": "MCP server that executes curl commands with Bearer token modification for Windows PowerShell",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.16.0"
+  }
+}
