@@ -14,7 +14,7 @@ const execAsync = promisify(exec);
 const BEARER_TOKEN = 'your-bearer-token-here';
 
 // Hardcoded log file path - In production, this should be configurable
-const LOG_FILE_PATH = process.platform === 'win32' ? 'C:\\logs\\application.log' : '/var/log/application.log';
+const LOG_FILE_PATH = "C:\\Users\\Admin\\Downloads\\log1.txt";
 
 class CurlMCPServer {
   constructor() {
