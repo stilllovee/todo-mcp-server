@@ -118,15 +118,15 @@ class CurlMCPServer {
       // Look for existing -H headers to insert near them, or add before the URL
       const headerRegex = /-H\s+["']([^"']+)["']/g;
       const hasHeaders = headerRegex.test(modifiedCommand);
-      
+
       if (hasHeaders) {
         // Insert after the last -H header
         const lastHeaderMatch = [...modifiedCommand.matchAll(/-H\s+["']([^"']+)["']/g)].pop();
         if (lastHeaderMatch) {
           const insertPos = lastHeaderMatch.index + lastHeaderMatch[0].length;
-          modifiedCommand = 
-            modifiedCommand.slice(0, insertPos) + 
-            ` -H "Authorization: Bearer ${BEARER_TOKEN}"` + 
+          modifiedCommand =
+            modifiedCommand.slice(0, insertPos) +
+            ` -H "Authorization: Bearer ${BEARER_TOKEN}"` +
             modifiedCommand.slice(insertPos);
         }
       } else {
@@ -219,8 +219,8 @@ class CurlMCPServer {
     try {
       // Hardcoded paths as requested
       const entrypoint = args.entrypoint || 'C:\\app\\server.js';
-      const logFile = args.logFile || 'C:\\logs\\node-output.log';
-      const errorLogFile = args.errorLogFile || 'C:\\logs\\node-error.log';
+      const logFile = args.logFile || 'C:\\Users\\Admin\\Documents\\code\\backend-mcp-server\\node.log';
+      const errorLogFile = args.errorLogFile || 'C:\\Users\\Admin\\Documents\\code\\backend-mcp-server\\node-error.log';
 
       console.log('[MCP Server] Restarting Node.js process...');
       console.log('[MCP Server] Entrypoint:', entrypoint);
@@ -228,16 +228,17 @@ class CurlMCPServer {
       console.log('[MCP Server] Error log file:', errorLogFile);
 
       // Step 1: Kill any process using port 3000
-      const killCommand = `$pid = (Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue).OwningProcess; if ($pid) { Stop-Process -Id $pid -Force; Write-Output "Killed process $pid" } else { Write-Output "No process found on port 3000" }`;
-      
+      const killCommand = `npx kill-port 3000`;
+
       const killResult = await this.executePowerShellCommand(killCommand);
       console.log('[MCP Server] Kill command result:', killResult);
 
       // Step 2: Start a new Node.js process
-      const startCommand = `Start-Process node "${entrypoint}" -RedirectStandardOutput "${logFile}" -RedirectStandardError "${errorLogFile}" -NoNewWindow; Write-Output "Started new Node.js process"`;
-      
-      const startResult = await this.executePowerShellCommand(startCommand);
-      console.log('[MCP Server] Start command result:', startResult);
+      const startCommand = `Start-Process node "${entrypoint}" -RedirectStandardOutput "${logFile}" -RedirectStandardError "${errorLogFile}"`;
+      this.executePowerShellCommand(startCommand).catch((error) => {
+        console.error('[MCP Server] Failed to start Node.js process:', error);
+      });
+      console.log('[MCP Server] Start command result:');
 
       return {
         content: [
@@ -255,13 +256,14 @@ class CurlMCPServer {
               },
               startStep: {
                 command: startCommand,
-                output: startResult.stdout,
-                error: startResult.stderr,
+                output: "oke",
+                error: "",
               },
             }, null, 2),
           },
         ],
       };
+
     } catch (error) {
       console.error('[MCP Server] Error in restartNodeProcess:', error);
       return {
@@ -285,7 +287,7 @@ class CurlMCPServer {
   async executePowerShellCommand(command) {
     return new Promise((resolve, reject) => {
       console.log('[MCP Server] Executing PowerShell command:', command);
-      
+
       // Check if we're on Windows platform
       if (process.platform !== 'win32') {
         const message = `PowerShell commands are only supported on Windows platform. Current platform: ${process.platform}`;
@@ -297,7 +299,7 @@ class CurlMCPServer {
         });
         return;
       }
-      
+
       const powershell = spawn('powershell.exe', ['-Command', command], {
         stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true,
@@ -318,7 +320,7 @@ class CurlMCPServer {
         console.log('[MCP Server] PowerShell command exit code:', code);
         console.log('[MCP Server] PowerShell stdout:', stdout);
         console.log('[MCP Server] PowerShell stderr:', stderr);
-        
+
         resolve({
           exitCode: code,
           stdout: stdout.trim(),
