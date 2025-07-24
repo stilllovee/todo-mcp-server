@@ -125,7 +125,10 @@ class CurlMCPServer {
 
     // Make PowerShell compatible
     // On Windows, we might need to use curl.exe to avoid PowerShell aliases
-    modifiedCommand = modifiedCommand.replace(/^curl\b/, 'curl.exe');
+    // Only do this on Windows platform
+    if (process.platform === 'win32') {
+      modifiedCommand = modifiedCommand.replace(/^curl\b/, 'curl.exe');
+    }
 
     // Fix quoting for PowerShell - ensure double quotes are properly escaped
     // PowerShell handles single quotes differently, so convert to double quotes

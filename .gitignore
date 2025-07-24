@@ -35,3 +35,7 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+
+# Development test files
+test.js
+mcp-test.js

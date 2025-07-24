@@ -72,6 +72,34 @@ To modify the token, edit the `BEARER_TOKEN` constant in `index.js`:
 const BEARER_TOKEN = 'your-actual-bearer-token-here';
 ```
 
+### Using Environment Variables (Recommended)
+
+For production use, modify the code to use environment variables:
+
+```javascript
+const BEARER_TOKEN = process.env.BEARER_TOKEN || 'default-token';
+```
+
+Then set the environment variable before starting the server:
+
+**Windows PowerShell:**
+```powershell
+$env:BEARER_TOKEN = "your-actual-token"
+npm start
+```
+
+**Windows Command Prompt:**
+```cmd
+set BEARER_TOKEN=your-actual-token
+npm start
+```
+
+**Unix/Linux:**
+```bash
+export BEARER_TOKEN="your-actual-token"
+npm start
+```
+
 ## PowerShell Compatibility
 
 The server makes several adjustments for Windows PowerShell compatibility:
