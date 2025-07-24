@@ -3,7 +3,7 @@
 const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
 const { CallToolRequestSchema, ListToolsRequestSchema } = require('@modelcontextprotocol/sdk/types.js');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const { promisify } = require('util');
 
 const execAsync = promisify(exec);
@@ -48,6 +48,28 @@ class CurlMCPServer {
               required: ['command'],
             },
           },
+          {
+            name: 'restart_node_process',
+            description: 'Kill any process using port 3000 and start a new Node.js process in the background',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                entrypoint: {
+                  type: 'string',
+                  description: 'Path to the Node.js entrypoint file (optional, uses hardcoded default)',
+                },
+                logFile: {
+                  type: 'string',
+                  description: 'Path to the log file (optional, uses hardcoded default)',
+                },
+                errorLogFile: {
+                  type: 'string',
+                  description: 'Path to the error log file (optional, uses hardcoded default)',
+                },
+              },
+              required: [],
+            },
+          },
         ],
       };
     });
@@ -58,6 +80,10 @@ class CurlMCPServer {
 
       if (name === 'execute_curl') {
         return await this.executeCurl(args.command);
+      }
+
+      if (name === 'restart_node_process') {
+        return await this.restartNodeProcess(args);
       }
 
       throw new Error(`Unknown tool: ${name}`);
@@ -184,6 +210,133 @@ class CurlMCPServer {
         ],
       };
     }
+  }
+
+  /**
+   * Kill any process using port 3000 and start a new Node.js process
+   */
+  async restartNodeProcess(args = {}) {
+    try {
+      // Hardcoded paths as requested
+      const entrypoint = args.entrypoint || 'C:\\app\\server.js';
+      const logFile = args.logFile || 'C:\\logs\\node-output.log';
+      const errorLogFile = args.errorLogFile || 'C:\\logs\\node-error.log';
+
+      console.log('[MCP Server] Restarting Node.js process...');
+      console.log('[MCP Server] Entrypoint:', entrypoint);
+      console.log('[MCP Server] Log file:', logFile);
+      console.log('[MCP Server] Error log file:', errorLogFile);
+
+      // Step 1: Kill any process using port 3000
+      const killCommand = `$pid = (Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue).OwningProcess; if ($pid) { Stop-Process -Id $pid -Force; Write-Output "Killed process $pid" } else { Write-Output "No process found on port 3000" }`;
+      
+      const killResult = await this.executePowerShellCommand(killCommand);
+      console.log('[MCP Server] Kill command result:', killResult);
+
+      // Step 2: Start a new Node.js process
+      const startCommand = `Start-Process node "${entrypoint}" -RedirectStandardOutput "${logFile}" -RedirectStandardError "${errorLogFile}" -NoNewWindow; Write-Output "Started new Node.js process"`;
+      
+      const startResult = await this.executePowerShellCommand(startCommand);
+      console.log('[MCP Server] Start command result:', startResult);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              entrypoint,
+              logFile,
+              errorLogFile,
+              killStep: {
+                command: killCommand,
+                output: killResult.stdout,
+                error: killResult.stderr,
+              },
+              startStep: {
+                command: startCommand,
+                output: startResult.stdout,
+                error: startResult.stderr,
+              },
+            }, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      console.error('[MCP Server] Error in restartNodeProcess:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              error: error.message,
+              stack: error.stack,
+            }, null, 2),
+          },
+        ],
+      };
+    }
+  }
+
+  /**
+   * Execute a PowerShell command using child_process.spawn
+   */
+  async executePowerShellCommand(command) {
+    return new Promise((resolve, reject) => {
+      console.log('[MCP Server] Executing PowerShell command:', command);
+      
+      // Check if we're on Windows platform
+      if (process.platform !== 'win32') {
+        const message = `PowerShell commands are only supported on Windows platform. Current platform: ${process.platform}`;
+        console.log('[MCP Server]', message);
+        resolve({
+          exitCode: -1,
+          stdout: '',
+          stderr: message,
+        });
+        return;
+      }
+      
+      const powershell = spawn('powershell.exe', ['-Command', command], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        windowsHide: true,
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      powershell.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      powershell.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      powershell.on('close', (code) => {
+        console.log('[MCP Server] PowerShell command exit code:', code);
+        console.log('[MCP Server] PowerShell stdout:', stdout);
+        console.log('[MCP Server] PowerShell stderr:', stderr);
+        
+        resolve({
+          exitCode: code,
+          stdout: stdout.trim(),
+          stderr: stderr.trim(),
+        });
+      });
+
+      powershell.on('error', (error) => {
+        console.error('[MCP Server] PowerShell command error:', error);
+        reject(error);
+      });
+
+      // Set a timeout for the PowerShell command
+      setTimeout(() => {
+        powershell.kill();
+        reject(new Error('PowerShell command timed out after 30 seconds'));
+      }, 30000);
+    });
   }
 
   async run() {
