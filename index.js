@@ -5,11 +5,16 @@ const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio
 const { CallToolRequestSchema, ListToolsRequestSchema } = require('@modelcontextprotocol/sdk/types.js');
 const { exec, spawn } = require('child_process');
 const { promisify } = require('util');
+const fs = require('fs').promises;
+const path = require('path');
 
 const execAsync = promisify(exec);
 
 // Hardcoded Bearer Token - In production, this should be configurable
 const BEARER_TOKEN = 'your-bearer-token-here';
+
+// Hardcoded log file path - In production, this should be configurable
+const LOG_FILE_PATH = process.platform === 'win32' ? 'C:\\logs\\application.log' : '/var/log/application.log';
 
 class CurlMCPServer {
   constructor() {
@@ -70,6 +75,20 @@ class CurlMCPServer {
               required: [],
             },
           },
+          {
+            name: 'read_logs',
+            description: 'Read logs from a hardcoded log file with different modes (head, tail, full, middle)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                mode: {
+                  type: 'string',
+                  description: 'Reading mode: "head:<n>" (first n lines), "tail:<n>" (last n lines), "full" (entire file), "middle:<n>" (n lines from middle)',
+                },
+              },
+              required: ['mode'],
+            },
+          },
         ],
       };
     });
@@ -84,6 +103,10 @@ class CurlMCPServer {
 
       if (name === 'restart_node_process') {
         return await this.restartNodeProcess(args);
+      }
+
+      if (name === 'read_logs') {
+        return await this.readLogs(args.mode);
       }
 
       throw new Error(`Unknown tool: ${name}`);
@@ -339,6 +362,161 @@ class CurlMCPServer {
         reject(new Error('PowerShell command timed out after 30 seconds'));
       }, 30000);
     });
+  }
+
+  /**
+   * Parse the mode parameter to extract command and number
+   */
+  parseMode(mode) {
+    if (mode === 'full') {
+      return { command: 'full', number: null };
+    }
+
+    const modePattern = /^(head|tail|middle):(\d+)$/;
+    const match = mode.match(modePattern);
+    
+    if (!match) {
+      throw new Error('Invalid mode format. Use "head:<n>", "tail:<n>", "full", or "middle:<n>"');
+    }
+
+    const [, command, numberStr] = match;
+    const number = parseInt(numberStr, 10);
+
+    if (number <= 0) {
+      throw new Error('Number of lines must be greater than 0');
+    }
+
+    return { command, number };
+  }
+
+  /**
+   * Read logs from the hardcoded log file with specified mode
+   */
+  async readLogs(mode) {
+    try {
+      console.log('[MCP Server] Reading logs with mode:', mode);
+
+      // Parse the mode
+      const { command, number } = this.parseMode(mode);
+
+      // Check if file exists
+      try {
+        await fs.access(LOG_FILE_PATH);
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                mode,
+                logFilePath: LOG_FILE_PATH,
+                error: `Log file not found: ${LOG_FILE_PATH}`,
+                lines: [],
+              }, null, 2),
+            },
+          ],
+        };
+      }
+
+      // Get file stats to check size
+      const stats = await fs.stat(LOG_FILE_PATH);
+      const fileSizeInMB = stats.size / (1024 * 1024);
+
+      // For very large files (>100MB), we might want to use streams
+      // But for simplicity and as requested, we'll read the full content and process
+      if (fileSizeInMB > 100) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                mode,
+                logFilePath: LOG_FILE_PATH,
+                error: `File too large (${fileSizeInMB.toFixed(2)}MB). Maximum supported size is 100MB.`,
+                lines: [],
+              }, null, 2),
+            },
+          ],
+        };
+      }
+
+      // Read the file content
+      const fileContent = await fs.readFile(LOG_FILE_PATH, 'utf8');
+      const allLines = fileContent.split('\n');
+      
+      // Remove the last empty line if it exists (common when files end with newline)
+      if (allLines.length > 0 && allLines[allLines.length - 1] === '') {
+        allLines.pop();
+      }
+
+      let resultLines = [];
+
+      // Process based on command
+      switch (command) {
+        case 'full':
+          resultLines = allLines;
+          break;
+
+        case 'head':
+          resultLines = allLines.slice(0, number);
+          break;
+
+        case 'tail':
+          resultLines = allLines.slice(-number);
+          break;
+
+        case 'middle':
+          const totalLines = allLines.length;
+          if (totalLines === 0) {
+            resultLines = [];
+          } else if (number >= totalLines) {
+            // If requested lines >= total lines, return all lines
+            resultLines = allLines;
+          } else {
+            // Calculate middle position
+            const startIndex = Math.floor((totalLines - number) / 2);
+            resultLines = allLines.slice(startIndex, startIndex + number);
+          }
+          break;
+
+        default:
+          throw new Error(`Unsupported command: ${command}`);
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              mode,
+              logFilePath: LOG_FILE_PATH,
+              totalLines: allLines.length,
+              returnedLines: resultLines.length,
+              lines: resultLines,
+            }, null, 2),
+          },
+        ],
+      };
+
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              mode,
+              logFilePath: LOG_FILE_PATH,
+              error: error.message,
+              lines: [],
+            }, null, 2),
+          },
+        ],
+      };
+    }
   }
 
   async run() {
