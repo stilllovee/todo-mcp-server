@@ -89,6 +89,15 @@ class CurlMCPServer {
               required: ['mode'],
             },
           },
+          {
+            name: 'generate_random_string',
+            description: 'Generate a random 6-character alphanumeric string',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+              required: [],
+            },
+          },
         ],
       };
     });
@@ -107,6 +116,10 @@ class CurlMCPServer {
 
       if (name === 'read_logs') {
         return await this.readLogs(args.mode);
+      }
+
+      if (name === 'generate_random_string') {
+        return await this.generateRandomString();
       }
 
       throw new Error(`Unknown tool: ${name}`);
@@ -512,6 +525,52 @@ class CurlMCPServer {
               logFilePath: LOG_FILE_PATH,
               error: error.message,
               lines: [],
+            }, null, 2),
+          },
+        ],
+      };
+    }
+  }
+
+  /**
+   * Generate a random 6-character alphanumeric string
+   */
+  async generateRandomString() {
+    try {
+      // Character set: A-Z, a-z, 0-9 (62 characters total)
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      
+      // Generate 6 random characters
+      for (let i = 0; i < 6; i++) {
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        result += characters[randomIndex];
+      }
+
+      console.log('[MCP Server] Generated random string:', result);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              randomString: result,
+              length: result.length,
+              characters: 'alphanumeric (A-Z, a-z, 0-9)',
+            }, null, 2),
+          },
+        ],
+      };
+
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              error: error.message,
             }, null, 2),
           },
         ],

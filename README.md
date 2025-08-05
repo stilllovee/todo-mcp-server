@@ -8,6 +8,7 @@ A Model Context Protocol (MCP) server that provides backend utilities including 
 - **PowerShell Compatibility**: Modifies curl syntax to work properly with PowerShell on Windows
 - **Command Execution**: Executes the modified curl commands and returns both stdout and stderr
 - **Log File Reading**: Reads logs from a hardcoded log file with multiple reading modes
+- **Random String Generation**: Generates random 6-character alphanumeric strings
 - **MCP Standard Compliance**: Uses stdio transport as per MCP specifications
 
 ## Installation
@@ -59,6 +60,28 @@ Reads logs from a hardcoded log file with different modes.
 ```json
 {
   "mode": "tail:50"
+}
+```
+
+#### `generate_random_string`
+
+Generates a random 6-character alphanumeric string.
+
+**Parameters:**
+- None required
+
+**Example:**
+```json
+{}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "randomString": "A1b2C3",
+  "length": 6,
+  "characters": "alphanumeric (A-Z, a-z, 0-9)"
 }
 ```
 
