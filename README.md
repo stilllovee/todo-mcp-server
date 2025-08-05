@@ -1,6 +1,6 @@
 # Backend MCP Server
 
-A Model Context Protocol (MCP) server that provides backend utilities including curl command execution with automatic Bearer token injection and log file reading capabilities.
+A Model Context Protocol (MCP) server that provides backend utilities including curl command execution with automatic Bearer token injection, log file reading capabilities, and autonomous task management tools.
 
 ## Features
 
@@ -9,6 +9,7 @@ A Model Context Protocol (MCP) server that provides backend utilities including 
 - **Command Execution**: Executes the modified curl commands and returns both stdout and stderr
 - **Log File Reading**: Reads logs from a hardcoded log file with multiple reading modes
 - **Random String Generation**: Generates random 6-character alphanumeric strings
+- **Task Management**: AI Agent can autonomously create, manage, and execute task lists with SQLite persistence
 - **MCP Standard Compliance**: Uses stdio transport as per MCP specifications
 
 ## Installation
@@ -83,6 +84,117 @@ Generates a random 6-character alphanumeric string.
   "length": 6,
   "characters": "alphanumeric (A-Z, a-z, 0-9)"
 }
+```
+
+#### Task Management Tools
+
+##### `plan`
+
+Create a new task list based on the Agent's request.
+
+**Parameters:**
+- `session_id` (string, required): The session identifier for the task list
+- `request` (string, optional): The original request content to create tasks from
+
+**Example:**
+```json
+{
+  "session_id": "my-session-123",
+  "request": "Create a Node.js web application with user authentication"
+}
+```
+
+##### `list`
+
+Retrieve all existing tasks of the current session.
+
+**Parameters:**
+- `session_id` (string, required): The session identifier to retrieve tasks for
+
+**Example:**
+```json
+{
+  "session_id": "my-session-123"
+}
+```
+
+##### `add`
+
+Add a new task to the current session's list.
+
+**Parameters:**
+- `session_id` (string, required): The session identifier for the task
+- `title` (string, required): The task title
+- `description` (string, optional): The task description
+
+**Example:**
+```json
+{
+  "session_id": "my-session-123",
+  "title": "Implement user registration",
+  "description": "Create registration form and validation logic"
+}
+```
+
+##### `remove`
+
+Remove a task from the list by its task_id.
+
+**Parameters:**
+- `task_id` (string, required): The unique identifier of the task to remove
+
+**Example:**
+```json
+{
+  "task_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+##### `complete`
+
+Mark a task as completed.
+
+**Parameters:**
+- `task_id` (string, required): The unique identifier of the task to mark as completed
+
+**Example:**
+```json
+{
+  "task_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+## Task Management System
+
+The server includes an autonomous task management system that allows AI Agents to:
+
+1. **Create Task Lists**: Generate comprehensive task lists from high-level requests
+2. **Manage Tasks**: Add, remove, and track individual tasks
+3. **Track Progress**: Mark tasks as completed and monitor status
+4. **Session Isolation**: Each session maintains its own separate task list
+5. **Persistent Storage**: All tasks are stored in SQLite database for persistence
+
+### Task Lifecycle
+
+1. **Planning**: Use the `plan` tool to generate a task list from a request
+2. **Execution**: Use `add` to create additional tasks as needed
+3. **Progress**: Use `complete` to mark tasks as finished
+4. **Management**: Use `list` to view all tasks and `remove` to delete unnecessary ones
+
+### Database Schema
+
+Tasks are stored in SQLite with the following structure:
+
+```sql
+CREATE TABLE tasks (
+  task_id TEXT PRIMARY KEY,           -- Globally unique UUID
+  session_id TEXT NOT NULL,           -- Session identifier
+  title TEXT NOT NULL,                -- Task title
+  description TEXT,                   -- Optional task description
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending' or 'completed'
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
 ## How It Works

@@ -7,6 +7,8 @@ const { exec, spawn } = require('child_process');
 const { promisify } = require('util');
 const fs = require('fs').promises;
 const path = require('path');
+const sqlite3 = require('sqlite3').verbose();
+const { v4: uuidv4 } = require('uuid');
 
 const execAsync = promisify(exec);
 
@@ -30,8 +32,38 @@ class CurlMCPServer {
       }
     );
 
+    // Initialize SQLite database for task management
+    this.dbPath = path.join(__dirname, 'tasks.db');
+    this.db = new sqlite3.Database(this.dbPath);
+    this.initializeDatabase();
+
     this.setupToolHandlers();
     this.setupErrorHandling();
+  }
+
+  /**
+   * Initialize SQLite database for task management
+   */
+  initializeDatabase() {
+    const createTableSQL = `
+      CREATE TABLE IF NOT EXISTS tasks (
+        task_id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    this.db.run(createTableSQL, (err) => {
+      if (err) {
+        console.error('[MCP Server] Error creating tasks table:', err);
+      } else {
+        console.error('[MCP Server] Tasks database initialized');
+      }
+    });
   }
 
   setupToolHandlers() {
@@ -98,6 +130,71 @@ class CurlMCPServer {
               required: [],
             },
           },
+          // ...existing code...
+          {
+            name: 'list',
+            description: 'Retrieve all existing tasks of the current session.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                session_id: {
+                  type: 'string',
+                  description: 'The session identifier for the task, generated randomly string and passed by the Agent',
+                },
+              },
+              required: ['session_id'],
+            },
+          },
+          {
+            name: 'add',
+            description: 'Add a new task to the current session\'s list.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                session_id: {
+                  type: 'string',
+                  description: 'The session identifier for the task, generated randomly string and passed by the Agent',
+                },
+                title: {
+                  type: 'string',
+                  description: 'The task title',
+                },
+                description: {
+                  type: 'string',
+                  description: 'The task description (optional)',
+                },
+              },
+              required: ['session_id', 'title'],
+            },
+          },
+          {
+            name: 'remove',
+            description: 'Remove a task from the list by its task_id.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                task_id: {
+                  type: 'string',
+                  description: 'The unique identifier of the task to remove',
+                },
+              },
+              required: ['task_id'],
+            },
+          },
+          {
+            name: 'complete',
+            description: 'Mark a task as completed.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                task_id: {
+                  type: 'string',
+                  description: 'The unique identifier of the task to mark as completed',
+                },
+              },
+              required: ['task_id'],
+            },
+          },
         ],
       };
     });
@@ -120,6 +217,24 @@ class CurlMCPServer {
 
       if (name === 'generate_random_string') {
         return await this.generateRandomString();
+      }
+
+      // ...existing code...
+
+      if (name === 'list') {
+        return await this.listTasks(args.session_id);
+      }
+
+      if (name === 'add') {
+        return await this.addTask(args.session_id, args.title, args.description);
+      }
+
+      if (name === 'remove') {
+        return await this.removeTask(args.task_id);
+      }
+
+      if (name === 'complete') {
+        return await this.completeTask(args.task_id);
       }
 
       throw new Error(`Unknown tool: ${name}`);
@@ -576,6 +691,254 @@ class CurlMCPServer {
         ],
       };
     }
+  }
+
+  /**
+   * Retrieve all existing tasks of the current session
+   */
+  async listTasks(sessionId) {
+    try {
+      console.log('[MCP Server] Listing tasks for session:', sessionId);
+
+      const tasks = await this.getTasksFromDB(sessionId);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              session_id: sessionId,
+              total_tasks: tasks.length,
+              tasks: tasks
+            }, null, 2),
+          },
+        ],
+      };
+
+    } catch (error) {
+      console.error('[MCP Server] Error in listTasks:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              session_id: sessionId,
+              error: error.message
+            }, null, 2),
+          },
+        ],
+      };
+    }
+  }
+
+  /**
+   * Add a new task to the current session's list
+   */
+  async addTask(sessionId, title, description = '') {
+    try {
+      console.log('[MCP Server] Adding task to session:', sessionId);
+
+      const taskId = uuidv4();
+      const task = await this.createTaskInDB(taskId, sessionId, title, description);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              task_id: taskId,
+              task: task
+            }, null, 2),
+          },
+        ],
+      };
+
+    } catch (error) {
+      console.error('[MCP Server] Error in addTask:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              session_id: sessionId,
+              title: title,
+              error: error.message
+            }, null, 2),
+          },
+        ],
+      };
+    }
+  }
+
+  /**
+   * Remove a task from the list by its task_id
+   */
+  async removeTask(taskId) {
+    try {
+      console.log('[MCP Server] Removing task:', taskId);
+
+      const success = await this.deleteTaskFromDB(taskId);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: success,
+              task_id: taskId,
+              message: success ? 'Task removed successfully' : 'Task not found'
+            }, null, 2),
+          },
+        ],
+      };
+
+    } catch (error) {
+      console.error('[MCP Server] Error in removeTask:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              task_id: taskId,
+              error: error.message
+            }, null, 2),
+          },
+        ],
+      };
+    }
+  }
+
+  /**
+   * Mark a task as completed
+   */
+  async completeTask(taskId) {
+    try {
+      console.log('[MCP Server] Completing task:', taskId);
+
+      const success = await this.updateTaskStatusInDB(taskId, 'completed');
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: success,
+              task_id: taskId,
+              status: 'completed',
+              message: success ? 'Task marked as completed' : 'Task not found'
+            }, null, 2),
+          },
+        ],
+      };
+
+    } catch (error) {
+      console.error('[MCP Server] Error in completeTask:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              task_id: taskId,
+              error: error.message
+            }, null, 2),
+          },
+        ],
+      };
+    }
+  }
+
+  /**
+   * Create a task in the database
+   */
+  async createTaskInDB(taskId, sessionId, title, description) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        INSERT INTO tasks (task_id, session_id, title, description, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+      `;
+
+      this.db.run(sql, [taskId, sessionId, title, description], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({
+            task_id: taskId,
+            session_id: sessionId,
+            title: title,
+            description: description,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      });
+    });
+  }
+
+  /**
+   * Get all tasks for a session from database
+   */
+  async getTasksFromDB(sessionId) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT task_id, session_id, title, description, status, created_at, updated_at
+        FROM tasks
+        WHERE session_id = ?
+        ORDER BY created_at ASC
+      `;
+
+      this.db.all(sql, [sessionId], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows || []);
+        }
+      });
+    });
+  }
+
+  /**
+   * Delete a task from database
+   */
+  async deleteTaskFromDB(taskId) {
+    return new Promise((resolve, reject) => {
+      const sql = 'DELETE FROM tasks WHERE task_id = ?';
+
+      this.db.run(sql, [taskId], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.changes > 0);
+        }
+      });
+    });
+  }
+
+  /**
+   * Update task status in database
+   */
+  async updateTaskStatusInDB(taskId, status) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        UPDATE tasks 
+        SET status = ?, updated_at = datetime('now')
+        WHERE task_id = ?
+      `;
+
+      this.db.run(sql, [status, taskId], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.changes > 0);
+        }
+      });
+    });
   }
 
   async run() {

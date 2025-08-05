@@ -39,3 +39,8 @@ temp/
 # Development test files
 test.js
 mcp-test.js
+
+# SQLite database files
+*.db
+*.sqlite
+*.sqlite3
