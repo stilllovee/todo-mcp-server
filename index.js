@@ -121,24 +121,7 @@ class CurlMCPServer {
               required: ['mode'],
             },
           },
-          {
-            name: 'plan',
-            description: 'Create a new task list based on the Agent\'s request.',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                session_id: {
-                  type: 'string',
-                  description: 'The session identifier for the task list',
-                },
-                request: {
-                  type: 'string',
-                  description: 'The original request content to create tasks from (optional)',
-                },
-              },
-              required: ['session_id'],
-            },
-          },
+          // ...existing code...
           {
             name: 'list',
             description: 'Retrieve all existing tasks of the current session.',
@@ -147,7 +130,7 @@ class CurlMCPServer {
               properties: {
                 session_id: {
                   type: 'string',
-                  description: 'The session identifier to retrieve tasks for',
+                  description: 'The session identifier for the task, generated randomly string and passed by the Agent',
                 },
               },
               required: ['session_id'],
@@ -161,7 +144,7 @@ class CurlMCPServer {
               properties: {
                 session_id: {
                   type: 'string',
-                  description: 'The session identifier for the task',
+                  description: 'The session identifier for the task, generated randomly string and passed by the Agent',
                 },
                 title: {
                   type: 'string',
@@ -223,9 +206,7 @@ class CurlMCPServer {
         return await this.readLogs(args.mode);
       }
 
-      if (name === 'plan') {
-        return await this.planTasks(args.session_id, args.request);
-      }
+      // ...existing code...
 
       if (name === 'list') {
         return await this.listTasks(args.session_id);
@@ -646,92 +627,6 @@ class CurlMCPServer {
               logFilePath: LOG_FILE_PATH,
               error: error.message,
               lines: [],
-            }, null, 2),
-          },
-        ],
-      };
-    }
-  }
-
-  /**
-   * Create a new task list based on the Agent's request
-   */
-  async planTasks(sessionId, request = '') {
-    try {
-      console.log('[MCP Server] Creating task plan for session:', sessionId);
-
-      // Simple task generation based on request - this is a basic implementation
-      // In a more sophisticated version, this could use AI to parse the request
-      const defaultTasks = [
-        'Analyze the request requirements',
-        'Break down the problem into smaller components',
-        'Research available solutions and approaches',
-        'Create implementation plan',
-        'Execute the planned solution',
-        'Test and validate results',
-        'Document the process and findings'
-      ];
-
-      // If request is provided, try to create more specific tasks
-      let tasks = defaultTasks;
-      if (request && request.trim()) {
-        // Basic request parsing - could be enhanced with NLP
-        if (request.toLowerCase().includes('code') || request.toLowerCase().includes('program')) {
-          tasks = [
-            'Understand the coding requirements',
-            'Set up development environment',
-            'Design the solution architecture',
-            'Implement core functionality',
-            'Add error handling and validation',
-            'Write tests for the implementation',
-            'Document the code and usage'
-          ];
-        } else if (request.toLowerCase().includes('data') || request.toLowerCase().includes('analysis')) {
-          tasks = [
-            'Identify data sources and requirements',
-            'Collect and clean the data',
-            'Perform exploratory data analysis',
-            'Apply appropriate analysis methods',
-            'Interpret results and findings',
-            'Create visualizations and reports',
-            'Validate conclusions and recommendations'
-          ];
-        }
-      }
-
-      // Create tasks in database
-      const createdTasks = [];
-      for (const title of tasks) {
-        const taskId = uuidv4();
-        const task = await this.createTaskInDB(taskId, sessionId, title, 'Auto-generated task from plan');
-        createdTasks.push(task);
-      }
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              session_id: sessionId,
-              request: request || 'No specific request provided',
-              tasks_created: createdTasks.length,
-              tasks: createdTasks
-            }, null, 2),
-          },
-        ],
-      };
-
-    } catch (error) {
-      console.error('[MCP Server] Error in planTasks:', error);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: false,
-              session_id: sessionId,
-              error: error.message
             }, null, 2),
           },
         ],
