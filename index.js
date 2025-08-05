@@ -7,6 +7,8 @@ const { exec, spawn } = require('child_process');
 const { promisify } = require('util');
 const fs = require('fs').promises;
 const path = require('path');
+const sqlite3 = require('sqlite3').verbose();
+const { v4: uuidv4 } = require('uuid');
 
 const execAsync = promisify(exec);
 
@@ -30,8 +32,38 @@ class CurlMCPServer {
       }
     );
 
+    // Initialize SQLite database for task management
+    this.dbPath = path.join(__dirname, 'tasks.db');
+    this.db = new sqlite3.Database(this.dbPath);
+    this.initializeDatabase();
+
     this.setupToolHandlers();
     this.setupErrorHandling();
+  }
+
+  /**
+   * Initialize SQLite database for task management
+   */
+  initializeDatabase() {
+    const createTableSQL = `
+      CREATE TABLE IF NOT EXISTS tasks (
+        task_id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    this.db.run(createTableSQL, (err) => {
+      if (err) {
+        console.error('[MCP Server] Error creating tasks table:', err);
+      } else {
+        console.error('[MCP Server] Tasks database initialized');
+      }
+    });
   }
 
   setupToolHandlers() {
@@ -89,6 +121,88 @@ class CurlMCPServer {
               required: ['mode'],
             },
           },
+          {
+            name: 'plan',
+            description: 'Create a new task list based on the Agent\'s request.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                session_id: {
+                  type: 'string',
+                  description: 'The session identifier for the task list',
+                },
+                request: {
+                  type: 'string',
+                  description: 'The original request content to create tasks from (optional)',
+                },
+              },
+              required: ['session_id'],
+            },
+          },
+          {
+            name: 'list',
+            description: 'Retrieve all existing tasks of the current session.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                session_id: {
+                  type: 'string',
+                  description: 'The session identifier to retrieve tasks for',
+                },
+              },
+              required: ['session_id'],
+            },
+          },
+          {
+            name: 'add',
+            description: 'Add a new task to the current session\'s list.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                session_id: {
+                  type: 'string',
+                  description: 'The session identifier for the task',
+                },
+                title: {
+                  type: 'string',
+                  description: 'The task title',
+                },
+                description: {
+                  type: 'string',
+                  description: 'The task description (optional)',
+                },
+              },
+              required: ['session_id', 'title'],
+            },
+          },
+          {
+            name: 'remove',
+            description: 'Remove a task from the list by its task_id.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                task_id: {
+                  type: 'string',
+                  description: 'The unique identifier of the task to remove',
+                },
+              },
+              required: ['task_id'],
+            },
+          },
+          {
+            name: 'complete',
+            description: 'Mark a task as completed.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                task_id: {
+                  type: 'string',
+                  description: 'The unique identifier of the task to mark as completed',
+                },
+              },
+              required: ['task_id'],
+            },
+          },
         ],
       };
     });
@@ -107,6 +221,26 @@ class CurlMCPServer {
 
       if (name === 'read_logs') {
         return await this.readLogs(args.mode);
+      }
+
+      if (name === 'plan') {
+        return await this.planTasks(args.session_id, args.request);
+      }
+
+      if (name === 'list') {
+        return await this.listTasks(args.session_id);
+      }
+
+      if (name === 'add') {
+        return await this.addTask(args.session_id, args.title, args.description);
+      }
+
+      if (name === 'remove') {
+        return await this.removeTask(args.task_id);
+      }
+
+      if (name === 'complete') {
+        return await this.completeTask(args.task_id);
       }
 
       throw new Error(`Unknown tool: ${name}`);
@@ -517,6 +651,340 @@ class CurlMCPServer {
         ],
       };
     }
+  }
+
+  /**
+   * Create a new task list based on the Agent's request
+   */
+  async planTasks(sessionId, request = '') {
+    try {
+      console.log('[MCP Server] Creating task plan for session:', sessionId);
+
+      // Simple task generation based on request - this is a basic implementation
+      // In a more sophisticated version, this could use AI to parse the request
+      const defaultTasks = [
+        'Analyze the request requirements',
+        'Break down the problem into smaller components',
+        'Research available solutions and approaches',
+        'Create implementation plan',
+        'Execute the planned solution',
+        'Test and validate results',
+        'Document the process and findings'
+      ];
+
+      // If request is provided, try to create more specific tasks
+      let tasks = defaultTasks;
+      if (request && request.trim()) {
+        // Basic request parsing - could be enhanced with NLP
+        if (request.toLowerCase().includes('code') || request.toLowerCase().includes('program')) {
+          tasks = [
+            'Understand the coding requirements',
+            'Set up development environment',
+            'Design the solution architecture',
+            'Implement core functionality',
+            'Add error handling and validation',
+            'Write tests for the implementation',
+            'Document the code and usage'
+          ];
+        } else if (request.toLowerCase().includes('data') || request.toLowerCase().includes('analysis')) {
+          tasks = [
+            'Identify data sources and requirements',
+            'Collect and clean the data',
+            'Perform exploratory data analysis',
+            'Apply appropriate analysis methods',
+            'Interpret results and findings',
+            'Create visualizations and reports',
+            'Validate conclusions and recommendations'
+          ];
+        }
+      }
+
+      // Create tasks in database
+      const createdTasks = [];
+      for (const title of tasks) {
+        const taskId = uuidv4();
+        const task = await this.createTaskInDB(taskId, sessionId, title, 'Auto-generated task from plan');
+        createdTasks.push(task);
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              session_id: sessionId,
+              request: request || 'No specific request provided',
+              tasks_created: createdTasks.length,
+              tasks: createdTasks
+            }, null, 2),
+          },
+        ],
+      };
+
+    } catch (error) {
+      console.error('[MCP Server] Error in planTasks:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              session_id: sessionId,
+              error: error.message
+            }, null, 2),
+          },
+        ],
+      };
+    }
+  }
+
+  /**
+   * Retrieve all existing tasks of the current session
+   */
+  async listTasks(sessionId) {
+    try {
+      console.log('[MCP Server] Listing tasks for session:', sessionId);
+
+      const tasks = await this.getTasksFromDB(sessionId);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              session_id: sessionId,
+              total_tasks: tasks.length,
+              tasks: tasks
+            }, null, 2),
+          },
+        ],
+      };
+
+    } catch (error) {
+      console.error('[MCP Server] Error in listTasks:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              session_id: sessionId,
+              error: error.message
+            }, null, 2),
+          },
+        ],
+      };
+    }
+  }
+
+  /**
+   * Add a new task to the current session's list
+   */
+  async addTask(sessionId, title, description = '') {
+    try {
+      console.log('[MCP Server] Adding task to session:', sessionId);
+
+      const taskId = uuidv4();
+      const task = await this.createTaskInDB(taskId, sessionId, title, description);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              task_id: taskId,
+              task: task
+            }, null, 2),
+          },
+        ],
+      };
+
+    } catch (error) {
+      console.error('[MCP Server] Error in addTask:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              session_id: sessionId,
+              title: title,
+              error: error.message
+            }, null, 2),
+          },
+        ],
+      };
+    }
+  }
+
+  /**
+   * Remove a task from the list by its task_id
+   */
+  async removeTask(taskId) {
+    try {
+      console.log('[MCP Server] Removing task:', taskId);
+
+      const success = await this.deleteTaskFromDB(taskId);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: success,
+              task_id: taskId,
+              message: success ? 'Task removed successfully' : 'Task not found'
+            }, null, 2),
+          },
+        ],
+      };
+
+    } catch (error) {
+      console.error('[MCP Server] Error in removeTask:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              task_id: taskId,
+              error: error.message
+            }, null, 2),
+          },
+        ],
+      };
+    }
+  }
+
+  /**
+   * Mark a task as completed
+   */
+  async completeTask(taskId) {
+    try {
+      console.log('[MCP Server] Completing task:', taskId);
+
+      const success = await this.updateTaskStatusInDB(taskId, 'completed');
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: success,
+              task_id: taskId,
+              status: 'completed',
+              message: success ? 'Task marked as completed' : 'Task not found'
+            }, null, 2),
+          },
+        ],
+      };
+
+    } catch (error) {
+      console.error('[MCP Server] Error in completeTask:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              task_id: taskId,
+              error: error.message
+            }, null, 2),
+          },
+        ],
+      };
+    }
+  }
+
+  /**
+   * Create a task in the database
+   */
+  async createTaskInDB(taskId, sessionId, title, description) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        INSERT INTO tasks (task_id, session_id, title, description, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+      `;
+
+      this.db.run(sql, [taskId, sessionId, title, description], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({
+            task_id: taskId,
+            session_id: sessionId,
+            title: title,
+            description: description,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      });
+    });
+  }
+
+  /**
+   * Get all tasks for a session from database
+   */
+  async getTasksFromDB(sessionId) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT task_id, session_id, title, description, status, created_at, updated_at
+        FROM tasks
+        WHERE session_id = ?
+        ORDER BY created_at ASC
+      `;
+
+      this.db.all(sql, [sessionId], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows || []);
+        }
+      });
+    });
+  }
+
+  /**
+   * Delete a task from database
+   */
+  async deleteTaskFromDB(taskId) {
+    return new Promise((resolve, reject) => {
+      const sql = 'DELETE FROM tasks WHERE task_id = ?';
+
+      this.db.run(sql, [taskId], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.changes > 0);
+        }
+      });
+    });
+  }
+
+  /**
+   * Update task status in database
+   */
+  async updateTaskStatusInDB(taskId, status) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        UPDATE tasks 
+        SET status = ?, updated_at = datetime('now')
+        WHERE task_id = ?
+      `;
+
+      this.db.run(sql, [status, taskId], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.changes > 0);
+        }
+      });
+    });
   }
 
   async run() {
