@@ -48,42 +48,42 @@ class CurlMCPServer {
               required: ['command'],
             },
           },
-          {
-            name: 'restart_node_process',
-            description: 'Kill any process using port 3000 and start a new Node.js process in the background',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                entrypoint: {
-                  type: 'string',
-                  description: 'Path to the Node.js entrypoint file (optional, uses hardcoded default)',
-                },
-                logFile: {
-                  type: 'string',
-                  description: 'Path to the log file (optional, uses hardcoded default)',
-                },
-                errorLogFile: {
-                  type: 'string',
-                  description: 'Path to the error log file (optional, uses hardcoded default)',
-                },
-              },
-              required: [],
-            },
-          },
-          {
-            name: 'read_logs',
-            description: 'Read logs from a hardcoded log file with different modes (head, tail, full, middle)',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                mode: {
-                  type: 'string',
-                  description: 'Reading mode: "head:<n>" (first n lines), "tail:<n>" (last n lines), "full" (entire file), "middle:<n>" (n lines from middle)',
-                },
-              },
-              required: ['mode'],
-            },
-          },
+          // {
+          //   name: 'restart_node_process',
+          //   description: 'Kill any process using port 3000 and start a new Node.js process in the background',
+          //   inputSchema: {
+          //     type: 'object',
+          //     properties: {
+          //       entrypoint: {
+          //         type: 'string',
+          //         description: 'Path to the Node.js entrypoint file (optional, uses hardcoded default)',
+          //       },
+          //       logFile: {
+          //         type: 'string',
+          //         description: 'Path to the log file (optional, uses hardcoded default)',
+          //       },
+          //       errorLogFile: {
+          //         type: 'string',
+          //         description: 'Path to the error log file (optional, uses hardcoded default)',
+          //       },
+          //     },
+          //     required: [],
+          //   },
+          // },
+          // {
+          //   name: 'read_logs',
+          //   description: 'Read logs from a hardcoded log file with different modes (head, tail, full, middle)',
+          //   inputSchema: {
+          //     type: 'object',
+          //     properties: {
+          //       mode: {
+          //         type: 'string',
+          //         description: 'Reading mode: "head:<n>" (first n lines), "tail:<n>" (last n lines), "full" (entire file), "middle:<n>" (n lines from middle)',
+          //       },
+          //     },
+          //     required: ['mode'],
+          //   },
+          // },
           {
             name: 'generate_random_string',
             description: 'Generate a random 6-character alphanumeric string',
