@@ -93,20 +93,20 @@ class CurlMCPServer {
               required: [],
             },
           },
-          {
-            name: 'list',
-            description: 'Retrieve all existing tasks of the current session.',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                session_id: {
-                  type: 'string',
-                  description: 'The session identifier for the task, generated randomly string and passed by the Agent',
-                },
-              },
-              required: ['session_id'],
-            },
-          },
+          // {
+          //   name: 'list',
+          //   description: 'Retrieve all existing tasks of the current session.',
+          //   inputSchema: {
+          //     type: 'object',
+          //     properties: {
+          //       session_id: {
+          //         type: 'string',
+          //         description: 'The session identifier for the task, generated randomly string and passed by the Agent',
+          //       },
+          //     },
+          //     required: ['session_id'],
+          //   },
+          // },
           {
             name: 'add',
             description: 'Add a new task to the current session\'s list.',
@@ -129,37 +129,37 @@ class CurlMCPServer {
               required: ['session_id', 'title'],
             },
           },
-          {
-            name: 'remove',
-            description: 'Remove a task from the list by its task_id.',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                task_id: {
-                  type: 'string',
-                  description: 'The unique identifier of the task to remove',
-                },
-              },
-              required: ['task_id'],
-            },
-          },
-          {
-            name: 'complete',
-            description: 'Mark a task as completed.',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                task_id: {
-                  type: 'string',
-                  description: 'The unique identifier of the task to mark as completed',
-                },
-              },
-              required: ['task_id'],
-            },
-          },
+          // {
+          //   name: 'remove',
+          //   description: 'Remove a task from the list by its task_id.',
+          //   inputSchema: {
+          //     type: 'object',
+          //     properties: {
+          //       task_id: {
+          //         type: 'string',
+          //         description: 'The unique identifier of the task to remove',
+          //       },
+          //     },
+          //     required: ['task_id'],
+          //   },
+          // },
+          // {
+          //   name: 'complete',
+          //   description: 'Mark a task as completed.',
+          //   inputSchema: {
+          //     type: 'object',
+          //     properties: {
+          //       task_id: {
+          //         type: 'string',
+          //         description: 'The unique identifier of the task to mark as completed',
+          //       },
+          //     },
+          //     required: ['task_id'],
+          //   },
+          // },
           {
             name: 'next',
-            description: 'Get next task from the session. On first call, returns first pending task. On subsequent calls, marks previously returned task as completed and returns next pending task.',
+            description: 'Returns next pending task. On subsequent calls, marks previously returned task as completed and returns next pending task.',
             inputSchema: {
               type: 'object',
               properties: {
