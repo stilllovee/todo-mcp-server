@@ -164,6 +164,51 @@ Mark a task as completed.
 }
 ```
 
+##### `next`
+
+Get the next task from the session. This tool implements a workflow where:
+- On the first call, it returns the first pending task without marking anything as done
+- On subsequent calls, it marks the previously returned task as completed, then returns the next pending task
+- If no tasks remain, it returns empty
+
+**Parameters:**
+- `session_id` (string, required): The session identifier for the task
+
+**Example:**
+```json
+{
+  "session_id": "my-session-123"
+}
+```
+
+**Response for available task:**
+```json
+{
+  "success": true,
+  "session_id": "my-session-123",
+  "task": {
+    "task_id": "550e8400-e29b-41d4-a716-446655440000",
+    "session_id": "my-session-123",
+    "title": "Implement user registration",
+    "description": "Create registration form",
+    "status": "pending",
+    "created_at": "2025-01-01T10:00:00Z",
+    "updated_at": "2025-01-01T10:00:00Z"
+  },
+  "message": "Next task retrieved"
+}
+```
+
+**Response when no tasks remain:**
+```json
+{
+  "success": true,
+  "session_id": "my-session-123", 
+  "task": null,
+  "message": "No pending tasks remaining"
+}
+```
+
 ## Task Management System
 
 The server includes an autonomous task management system that allows AI Agents to:
@@ -178,14 +223,38 @@ The server includes an autonomous task management system that allows AI Agents t
 
 1. **Planning**: Use the `plan` tool to generate a task list from a request
 2. **Execution**: Use `add` to create additional tasks as needed
-3. **Progress**: Use `complete` to mark tasks as finished
-4. **Management**: Use `list` to view all tasks and `remove` to delete unnecessary ones
+3. **Progress**: Use `complete` to mark tasks as finished, or use `next` for sequential workflow
+4. **Sequential Workflow**: Use `next` for a workflow where tasks are automatically completed as you move to the next one
+5. **Management**: Use `list` to view all tasks and `remove` to delete unnecessary ones
+
+### Sequential Workflow with `next`
+
+The `next` tool provides a streamlined workflow for processing tasks sequentially:
+
+```javascript
+// First call - returns first task without completing anything
+await callTool('next', { session_id: 'session-123' });
+// Returns: Task 1
+
+// Second call - completes Task 1 and returns Task 2  
+await callTool('next', { session_id: 'session-123' });
+// Completes: Task 1, Returns: Task 2
+
+// Third call - completes Task 2 and returns Task 3
+await callTool('next', { session_id: 'session-123' });
+// Completes: Task 2, Returns: Task 3
+
+// Fourth call - completes Task 3, no more tasks
+await callTool('next', { session_id: 'session-123' });
+// Completes: Task 3, Returns: null (no more tasks)
+```
 
 ### Database Schema
 
-Tasks are stored in SQLite with the following structure:
+Tasks and session state are stored in SQLite with the following structure:
 
 ```sql
+-- Tasks table
 CREATE TABLE tasks (
   task_id TEXT PRIMARY KEY,           -- Globally unique UUID
   session_id TEXT NOT NULL,           -- Session identifier
@@ -193,6 +262,13 @@ CREATE TABLE tasks (
   description TEXT,                   -- Optional task description
   status TEXT NOT NULL DEFAULT 'pending', -- 'pending' or 'completed'
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Sessions table (for next tool state tracking)
+CREATE TABLE sessions (
+  session_id TEXT PRIMARY KEY,        -- Session identifier
+  current_next_task_id TEXT,          -- ID of task currently returned by next tool
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```

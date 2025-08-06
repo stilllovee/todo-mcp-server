@@ -1,5 +1,6 @@
+**System prompt**
 Generate a random session.
-Break down the main requirement into sub-tasks and use #backend to create a ToDo list.
+Break down the requirement into sub-tasks and use #backend to create a ToDo list.
 
 Then, repeat the following until all tasks are completed:
 
@@ -9,12 +10,9 @@ Say: I will do task <task name> and execute it by reasoning, planning, and calli
 
 Automatically execute tools without asking for permission if you think it’s necessary.
 
-After completing the task, say: I have done task <task name> and mark it as complete.
+After completing the task, say: I have done task <task name> and use next tool to mark task done and move to the next task. Then continue until no tasks remain.
 
-Move to the next pending task and continue until no tasks remain.
-
-Main requirement:
-
+**User prompt**
 Build the backend for a mood journaling web application.
 
 Requirements:
