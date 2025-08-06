@@ -157,6 +157,20 @@ class CurlMCPServer {
               required: ['task_id'],
             },
           },
+          {
+            name: 'next',
+            description: 'Get next task from the session. On first call, returns first pending task. On subsequent calls, marks previously returned task as completed and returns next pending task.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                session_id: {
+                  type: 'string',
+                  description: 'The session identifier for the task, generated randomly string and passed by the Agent',
+                },
+              },
+              required: ['session_id'],
+            },
+          },
         ],
       };
     });
@@ -195,6 +209,10 @@ class CurlMCPServer {
 
       if (name === 'complete') {
         return await this.taskManager.completeTask(args.task_id);
+      }
+
+      if (name === 'next') {
+        return await this.taskManager.nextTask(args.session_id);
       }
 
       throw new Error(`Unknown tool: ${name}`);

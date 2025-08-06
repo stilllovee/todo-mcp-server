@@ -167,6 +167,79 @@ class TaskManager {
       };
     }
   }
+
+  /**
+   * Get next task for a session. On first call, returns first pending task.
+   * On subsequent calls, marks previously returned task as completed and returns next.
+   */
+  async nextTask(sessionId) {
+    try {
+      console.log('[MCP Server] Getting next task for session:', sessionId);
+
+      // Get current next task ID for this session
+      const currentTaskId = await this.db.getCurrentNextTask(sessionId);
+
+      // If there's a current task, mark it as completed
+      if (currentTaskId) {
+        console.log('[MCP Server] Marking previous task as completed:', currentTaskId);
+        await this.db.updateTaskStatus(currentTaskId, 'completed');
+      }
+
+      // Get the first pending task
+      const nextTask = await this.db.getFirstPendingTask(sessionId);
+
+      if (!nextTask) {
+        // No tasks remaining, clear current next task
+        await this.db.setCurrentNextTask(sessionId, null);
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                session_id: sessionId,
+                task: null,
+                message: 'No pending tasks remaining'
+              }, null, 2),
+            },
+          ],
+        };
+      }
+
+      // Set this task as the current next task
+      await this.db.setCurrentNextTask(sessionId, nextTask.task_id);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              session_id: sessionId,
+              task: nextTask,
+              message: 'Next task retrieved'
+            }, null, 2),
+          },
+        ],
+      };
+
+    } catch (error) {
+      console.error('[MCP Server] Error in nextTask:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              session_id: sessionId,
+              error: error.message
+            }, null, 2),
+          },
+        ],
+      };
+    }
+  }
 }
 
 module.exports = {

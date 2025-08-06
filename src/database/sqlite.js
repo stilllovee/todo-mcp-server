@@ -13,7 +13,7 @@ class TaskDatabase {
    * Initialize SQLite database for task management
    */
   initializeDatabase() {
-    const createTableSQL = `
+    const createTasksTableSQL = `
       CREATE TABLE IF NOT EXISTS tasks (
         task_id TEXT PRIMARY KEY,
         session_id TEXT NOT NULL,
@@ -25,11 +25,27 @@ class TaskDatabase {
       )
     `;
 
-    this.db.run(createTableSQL, (err) => {
+    const createSessionsTableSQL = `
+      CREATE TABLE IF NOT EXISTS sessions (
+        session_id TEXT PRIMARY KEY,
+        current_next_task_id TEXT,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    this.db.run(createTasksTableSQL, (err) => {
       if (err) {
         console.error('[MCP Server] Error creating tasks table:', err);
       } else {
-        console.error('[MCP Server] Tasks database initialized');
+        console.error('[MCP Server] Tasks table initialized');
+      }
+    });
+
+    this.db.run(createSessionsTableSQL, (err) => {
+      if (err) {
+        console.error('[MCP Server] Error creating sessions table:', err);
+      } else {
+        console.error('[MCP Server] Sessions table initialized');
       }
     });
   }
@@ -117,6 +133,70 @@ class TaskDatabase {
           reject(err);
         } else {
           resolve(this.changes > 0);
+        }
+      });
+    });
+  }
+
+  /**
+   * Get current next task ID for a session
+   */
+  async getCurrentNextTask(sessionId) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT current_next_task_id
+        FROM sessions
+        WHERE session_id = ?
+      `;
+
+      this.db.get(sql, [sessionId], (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row ? row.current_next_task_id : null);
+        }
+      });
+    });
+  }
+
+  /**
+   * Set current next task ID for a session
+   */
+  async setCurrentNextTask(sessionId, taskId) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        INSERT OR REPLACE INTO sessions (session_id, current_next_task_id, updated_at)
+        VALUES (?, ?, datetime('now'))
+      `;
+
+      this.db.run(sql, [sessionId, taskId], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(true);
+        }
+      });
+    });
+  }
+
+  /**
+   * Get first pending task for a session
+   */
+  async getFirstPendingTask(sessionId) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT task_id, session_id, title, description, status, created_at, updated_at
+        FROM tasks
+        WHERE session_id = ? AND status = 'pending'
+        ORDER BY created_at ASC
+        LIMIT 1
+      `;
+
+      this.db.get(sql, [sessionId], (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row || null);
         }
       });
     });
