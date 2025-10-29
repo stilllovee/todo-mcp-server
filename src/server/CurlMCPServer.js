@@ -34,20 +34,20 @@ class CurlMCPServer {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
         tools: [
-          {
-            name: 'execute_curl',
-            description: 'Execute a curl command with automatic Bearer token injection and PowerShell compatibility',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                command: {
-                  type: 'string',
-                  description: 'The curl command to execute',
-                },
-              },
-              required: ['command'],
-            },
-          },
+          // {
+          //   name: 'execute_curl',
+          //   description: 'Execute a curl command with automatic Bearer token injection and PowerShell compatibility',
+          //   inputSchema: {
+          //     type: 'object',
+          //     properties: {
+          //       command: {
+          //         type: 'string',
+          //         description: 'The curl command to execute',
+          //       },
+          //     },
+          //     required: ['command'],
+          //   },
+          // },
           // {
           //   name: 'restart_node_process',
           //   description: 'Kill any process using port 3000 and start a new Node.js process in the background',
