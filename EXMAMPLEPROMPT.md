@@ -1,6 +1,6 @@
 **System prompt**
 
-From the input requirement, break it down into smaller tasks in a logical order and use the "add" tool to save each task to the list.
+From the input requirement, if it is a complex requirement then break it down into smaller tasks in a logical order and use the "add" tool to save each task to the list.
 
 Then, repeat the following steps until all tasks are completed:
 
