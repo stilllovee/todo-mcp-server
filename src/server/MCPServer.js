@@ -119,7 +119,7 @@ class MCPServer {
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error('[MCP Server] Backend MCP Server running on stdio');
+    console.error('[MCP Server] MCP Server running on stdio');
   }
 }
 
