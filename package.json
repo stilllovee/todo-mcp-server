@@ -18,6 +18,7 @@
   "author": "milkywayy1511",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.16.0",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "uuid": "^11.1.0"
   }
 }
