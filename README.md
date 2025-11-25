@@ -18,7 +18,19 @@ A Model Context Protocol (MCP) server that provides an autonomous task managemen
 ## Usage
 ### Github Copilot
 ```json
-//use after clone repo
+//use directly with npx
+{
+    "servers": {
+        "todo": {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["github:stilllovee/todo-mcp-server"]
+        },
+    },
+    "inputs": []
+}
+
+//or use after clone repo
 {
     "servers": {
         "todo": {
@@ -29,17 +41,28 @@ A Model Context Protocol (MCP) server that provides an autonomous task managemen
     },
     "inputs": []
 }
+```
 
-// or use directly with npx
+### Claude Desktop
+```json
+//use directly with npx
 {
-    "servers": {
-        "todo": {
-            "type": "stdio",
-            "command": "npx",
-            "args": ["github:stilllovee/todo-mcp-server"]
-        },
-    },
-    "inputs": []
+  "mcpServers": {
+    "todo":{
+      "command": "npx",
+      "args": ["github:stilllovee/todo-mcp-server"]
+    }
+  }
+}
+
+//or use after clone repo
+{
+  "mcpServers": {
+    "todo":{
+      "command": "node",
+      "args": ["PATH_TO_YOUR_FOLDER"]
+    }
+  }
 }
 ```
 
