@@ -10,7 +10,7 @@ const { readLogs } = require('../tools/logs');
 const { generateRandomString } = require('../tools/utils');
 const { TaskManager } = require('../tools/tasks');
 
-class CurlMCPServer {
+class MCPServer {
   constructor() {
     this.server = new Server(
       SERVER_CONFIG,
@@ -34,56 +34,6 @@ class CurlMCPServer {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
         tools: [
-          // {
-          //   name: 'execute_curl',
-          //   description: 'Execute a curl command with automatic Bearer token injection and PowerShell compatibility',
-          //   inputSchema: {
-          //     type: 'object',
-          //     properties: {
-          //       command: {
-          //         type: 'string',
-          //         description: 'The curl command to execute',
-          //       },
-          //     },
-          //     required: ['command'],
-          //   },
-          // },
-          // {
-          //   name: 'restart_node_process',
-          //   description: 'Kill any process using port 3000 and start a new Node.js process in the background',
-          //   inputSchema: {
-          //     type: 'object',
-          //     properties: {
-          //       entrypoint: {
-          //         type: 'string',
-          //         description: 'Path to the Node.js entrypoint file (optional, uses hardcoded default)',
-          //       },
-          //       logFile: {
-          //         type: 'string',
-          //         description: 'Path to the log file (optional, uses hardcoded default)',
-          //       },
-          //       errorLogFile: {
-          //         type: 'string',
-          //         description: 'Path to the error log file (optional, uses hardcoded default)',
-          //       },
-          //     },
-          //     required: [],
-          //   },
-          // },
-          // {
-          //   name: 'read_logs',
-          //   description: 'Read logs from a hardcoded log file with different modes (head, tail, full, middle)',
-          //   inputSchema: {
-          //     type: 'object',
-          //     properties: {
-          //       mode: {
-          //         type: 'string',
-          //         description: 'Reading mode: "head:<n>" (first n lines), "tail:<n>" (last n lines), "full" (entire file), "middle:<n>" (n lines from middle)',
-          //       },
-          //     },
-          //     required: ['mode'],
-          //   },
-          // },
           {
             name: 'generate_random_string',
             description: 'Generate a random 6-character alphanumeric string',
@@ -93,20 +43,6 @@ class CurlMCPServer {
               required: [],
             },
           },
-          // {
-          //   name: 'list',
-          //   description: 'Retrieve all existing tasks of the current session.',
-          //   inputSchema: {
-          //     type: 'object',
-          //     properties: {
-          //       session_id: {
-          //         type: 'string',
-          //         description: 'The session identifier for the task, generated randomly string and passed by the Agent',
-          //       },
-          //     },
-          //     required: ['session_id'],
-          //   },
-          // },
           {
             name: 'add',
             description: 'Add a new task to the current session\'s list.',
@@ -129,34 +65,6 @@ class CurlMCPServer {
               required: ['session_id', 'title'],
             },
           },
-          // {
-          //   name: 'remove',
-          //   description: 'Remove a task from the list by its task_id.',
-          //   inputSchema: {
-          //     type: 'object',
-          //     properties: {
-          //       task_id: {
-          //         type: 'string',
-          //         description: 'The unique identifier of the task to remove',
-          //       },
-          //     },
-          //     required: ['task_id'],
-          //   },
-          // },
-          // {
-          //   name: 'complete',
-          //   description: 'Mark a task as completed.',
-          //   inputSchema: {
-          //     type: 'object',
-          //     properties: {
-          //       task_id: {
-          //         type: 'string',
-          //         description: 'The unique identifier of the task to mark as completed',
-          //       },
-          //     },
-          //     required: ['task_id'],
-          //   },
-          // },
           {
             name: 'next',
             description: 'Returns next pending task. On subsequent calls, marks previously returned task as completed and returns next pending task.',
@@ -241,5 +149,5 @@ class CurlMCPServer {
 }
 
 module.exports = {
-  CurlMCPServer,
+  MCPServer: MCPServer,
 };
