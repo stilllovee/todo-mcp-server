@@ -86,36 +86,12 @@ class MCPServer {
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
 
-      if (name === 'execute_curl') {
-        return await executeCurl(args.command);
-      }
-
-      if (name === 'restart_node_process') {
-        return await restartNodeProcess(args);
-      }
-
-      if (name === 'read_logs') {
-        return await readLogs(args.mode);
-      }
-
       if (name === 'generate_random_string') {
         return await generateRandomString();
       }
 
-      if (name === 'list') {
-        return await this.taskManager.listTasks(args.session_id);
-      }
-
       if (name === 'add') {
         return await this.taskManager.addTask(args.session_id, args.title, args.description);
-      }
-
-      if (name === 'remove') {
-        return await this.taskManager.removeTask(args.task_id);
-      }
-
-      if (name === 'complete') {
-        return await this.taskManager.completeTask(args.task_id);
       }
 
       if (name === 'next') {
