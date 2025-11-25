@@ -16,11 +16,19 @@ A Model Context Protocol (MCP) server that provides an autonomous task managemen
    ```
 
 ## Usage
-
-### Running the Server
-
-```bash
-npm start
+### Github Copilot
+```json
+//run after clone repo
+{
+    "servers": {
+        "todo": {
+            "type": "stdio",
+            "command": "node",
+            "args": ["PATH_TO_YOUR_FOLDER"]
+        }
+    },
+    "inputs": []
+}
 ```
 
 The server runs on stdio transport and communicates via standard input/output.
