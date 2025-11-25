@@ -2,18 +2,17 @@ const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
 const { CallToolRequestSchema, ListToolsRequestSchema } = require('@modelcontextprotocol/sdk/types.js');
 
-const { SERVER_CONFIG } = require('../config/constants');
 const { TaskDatabase } = require('../database/sqlite');
-const { executeCurl } = require('../tools/curl');
-const { restartNodeProcess } = require('../tools/process');
-const { readLogs } = require('../tools/logs');
 const { generateRandomString } = require('../tools/utils');
 const { TaskManager } = require('../tools/tasks');
 
 class MCPServer {
   constructor() {
     this.server = new Server(
-      SERVER_CONFIG,
+      {
+        name: 'todo-mcp-server',
+        version: '1.0.0',
+      },
       {
         capabilities: {
           tools: {},
