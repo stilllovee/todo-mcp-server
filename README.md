@@ -12,11 +12,74 @@ A Model Context Protocol (MCP) server that provides an autonomous task managemen
 
 ## Installation
 
+### Local Development
+
 1. Clone this repository
 2. Install dependencies:
    ```bash
    npm install
    ```
+
+### Docker Deployment
+
+#### Quick Start with Docker Compose (Recommended)
+
+```bash
+# Start the server
+docker-compose up -d
+
+# Stop the server
+docker-compose down
+```
+
+#### Manual Docker Commands
+
+```bash
+# Build the Docker image
+docker build -t todo-mcp-server .
+
+# Run the container
+docker run -d \
+  --name todo-mcp-server \
+  -p 8123:8123 \
+  -v todo-mcp-data:/app/data \
+  --restart unless-stopped \
+  todo-mcp-server
+
+# Stop the container
+docker stop todo-mcp-server && docker rm todo-mcp-server
+```
+
+#### PowerShell Script (Windows)
+
+Use the included PowerShell script for easy management:
+
+```powershell
+# Build the image
+./docker.ps1 build
+
+# Run the container
+./docker.ps1 run
+
+# Start with docker-compose
+./docker.ps1 compose-up
+
+# View logs
+./docker.ps1 logs
+
+# Stop the container
+./docker.ps1 stop
+
+# Clean up all resources
+./docker.ps1 clean
+```
+
+The Docker container:
+- Runs on port 8123 by default
+- Persists data in a Docker volume
+- Includes health checks
+- Runs as a non-root user for security
+- Automatically restarts unless manually stopped
 
 ## Usage
 
