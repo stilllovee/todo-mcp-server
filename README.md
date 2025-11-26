@@ -1,11 +1,14 @@
 # Todo MCP Server
 
-A Model Context Protocol (MCP) server that provides an autonomous task management system
+A Model Context Protocol (MCP) server that provides an autonomous task management system with support for both **stdio** and **HTTP (Streamable)** transports.
 
 ## Features
 - **Random String Generation**: Generates random 6-character alphanumeric strings
 - **Task Management**: AI Agent can autonomously create, manage, and execute task lists with SQLite persistence
-- **MCP Standard Compliance**: Uses stdio transport as per MCP specifications
+- **Multiple Transport Modes**: 
+  - **Stdio Transport**: Standard MCP communication via stdin/stdout
+  - **HTTP Transport**: RESTful API with Server-Sent Events (SSE) support for real-time notifications
+- **MCP Standard Compliance**: Fully compliant with MCP specifications
 
 ## Installation
 
@@ -16,7 +19,10 @@ A Model Context Protocol (MCP) server that provides an autonomous task managemen
    ```
 
 ## Usage
-### Claude Desktop
+
+### Stdio Transport (Default)
+
+#### Claude Desktop
 ```json
 //use directly with npx
 {
@@ -39,7 +45,7 @@ A Model Context Protocol (MCP) server that provides an autonomous task managemen
 }
 ```
 
-### Github Copilot
+#### Github Copilot
 ```json
 //use directly with npx
 {
@@ -67,6 +73,89 @@ A Model Context Protocol (MCP) server that provides an autonomous task managemen
 ```
 
 The server runs on stdio transport and communicates via standard input/output.
+
+### HTTP Transport (Streamable)
+
+Start the HTTP server:
+
+```bash
+# Default port (8123)
+npm run start:http
+
+# Custom port
+node http-server.js --port=3000
+```
+
+The server will be available at: `http://localhost:8123/mcp`
+
+#### HTTP Endpoints
+
+- **POST /mcp**: Send MCP requests (initialize, tool calls, etc.)
+- **GET /mcp**: Establish SSE stream for real-time notifications (requires valid session ID)
+
+#### Session Management
+
+The HTTP transport supports stateful sessions:
+1. Client sends an `initialize` request without session ID
+2. Server creates a new session and returns session ID in response headers
+3. Client includes `mcp-session-id` header in subsequent requests
+4. Server maintains separate task lists per session
+
+#### Example Usage with curl
+
+```bash
+# Initialize session
+curl -X POST http://localhost:8123/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {},
+      "clientInfo": {
+        "name": "test-client",
+        "version": "1.0.0"
+      }
+    }
+  }'
+
+# Use tools with session ID (get from initialize response)
+curl -X POST http://localhost:8123/mcp \
+  -H "Content-Type: application/json" \
+  -H "mcp-session-id: YOUR_SESSION_ID" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": {
+      "name": "add",
+      "arguments": {
+        "session_id": "test-123",
+        "title": "Test Task"
+      }
+    }
+  }'
+
+# Establish SSE stream
+curl -N -H "mcp-session-id: YOUR_SESSION_ID" \
+  http://localhost:8123/mcp
+```
+
+#### Github Copilot Configuration (HTTP)
+
+```json
+{
+    "servers": {
+        "todo-http": {
+            "type": "http",
+            "url": "http://localhost:8123/mcp"
+        }
+    },
+    "inputs": []
+}
+```
 
 ### Available Tools
 

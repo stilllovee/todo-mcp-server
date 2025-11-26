@@ -1,5 +1,5 @@
-const { CurlMCPServer } = require('./CurlMCPServer');
+const { MCPServer } = require('./MCPServer');
 
 module.exports = {
-  CurlMCPServer,
+  MCPServer,
 };

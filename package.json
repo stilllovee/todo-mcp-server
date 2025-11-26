@@ -1,5 +1,5 @@
 {
-  "name": "backend-mcp-server",
+  "name": "todo-mcp-server",
   "version": "1.0.0",
   "main": "index.js",
   "bin": {
@@ -7,21 +7,20 @@
   },
   "scripts": {
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start:http": "node http-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:http": "node examples/http-client.js"
   },
   "keywords": [
     "mcp",
     "server",
-    "curl",
-    "backend",
-    "logs",
-    "file-reading"
+    "todo",
+    "modelcontextprotocol"
   ],
-  "author": "",
-  "license": "ISC",
-  "description": "MCP server that provides backend utilities including curl command execution with Bearer token modification and log file reading capabilities",
+  "author": "milkywayy1511",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.16.0",
+    "express": "^4.18.2",
     "sqlite3": "^5.1.7",
     "uuid": "^11.1.0"
   }
