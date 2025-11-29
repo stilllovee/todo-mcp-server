@@ -93,16 +93,21 @@ class MCPServer {
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
 
-      if (name === 'generate_random_string') {
-        return await generateRandomString();
-      }
+      try {
+        if (name === 'generate_random_string') {
+          return await generateRandomString();
+        }
 
-      if (name === 'add') {
-        return await this.taskManager.addTask(args.session_id, args.title, args.description);
-      }
+        if (name === 'add') {
+          return await this.taskManager.addTask(args.session_id, args.title, args.description);
+        }
 
-      if (name === 'next') {
-        return await this.taskManager.nextTask(args.session_id);
+        if (name === 'next') {
+          return await this.taskManager.nextTask(args.session_id);
+        }
+      } catch (error) {
+        console.error(`[MCP Server] Error executing tool ${name}:`, error);
+        throw new Error(`Tool execution failed: ${error.message}`);
       }
 
       throw new Error(`Unknown tool: ${name}`);
@@ -170,7 +175,7 @@ class MCPServer {
       if (!sessionId && this.isInitializeRequest(req.body)) {
         // Dynamically import StreamableHTTPServerTransport
         const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
-        
+
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
         });
